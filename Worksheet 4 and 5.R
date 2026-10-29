@@ -1,0 +1,98 @@
+# Problem 4.3
+library(mnormt)
+rmnorm(n=10,varcov=diag(10))
+
+myrmnorm=function(n,mu,Sigma){
+    d<-as.numeric(nrow(mu))
+    average<-matrix(rep(0,times=n*d),nrow=d)
+    for (i in 1:d){
+        temp<-rnorm(n,mean=0,sd=1)
+        average[i,]<-temp
+    }
+    vect<-eigen(Sigma)$vectors%*%diag(sqrt(eigen(Sigma)$values))
+    tem<-matrix(rep(mu,times=n),ncol=n)
+    print(tem)
+    print(tem+vect%*%average)
+}
+mean1<-matrix(c(1,2,3),ncol=1)
+vari<-matrix(c(1,0,0,0,1,0,0,0,1),nrow=3)
+myrmnorm(10,mean1,vari)
+
+# Problem 5.2
+library(mnormt)
+mu<-matrix(c(0,0),nrow=2)
+sigm<-matrix(c(2,2,2,4),nrow=2)
+data<-rmnorm(500,mean=mu,varcov=sigm)
+head(data)
+
+library(whitening)
+zca<- whiten(data,method="ZCA")
+zcacor<- whiten(data,method="ZCA-cor")
+pca<- whiten(data,method="PCA")
+pcacor<- whiten(data,method="PCA-cor")
+chol<-whiten(data,method="Cholesky")
+head(zca);head(zcacor);head(pca);head(pcacor);head(chol)
+
+cor(zca);cor(zcacor);cor(pca);cor(pcacor);cor(chol)
+cov(zca);cov(zcacor);cov(pca);cov(pcacor);cov(chol)
+
+par(mfrow=c(2,3))
+plot(zca,zcacor);plot(zca,pca);plot(zca,pcacor)
+plot(zcacor,pca);plot(zcacor,pcacor);plot(pca,pcacor)
+
+par(mfrow=c(3,2))
+plot(data,zca);plot(data,zcacor)
+plot(data,pca);plot(data,pcacor);plot(data,chol)
+
+cor(data,zca);cor(data,zcacor)
+cor(data,pca);cor(data,pcacor);cor(data,chol)
+
+par(mfrow=c(3,2))
+image(cor(data,zca));image(cor(data,zcacor))
+image(cor(data,pca));image(cor(data,pcacor));image(cor(data,chol))
+
+temp4<-cor(data,zca)
+temp4[1,1]+temp4[2,2]
+temp4<-cor(data,zcacor)
+temp4[1,1]+temp4[2,2]
+temp4<-cor(data,pca)
+temp4[1,1]+temp4[2,2]
+temp4<-cor(data,pcacor)
+temp4[1,1]+temp4[2,2]
+#Since they are same dimensional, we dont need to divide d.
+
+temp4<-t(cor(data,zca))%*%cor(data,zca)
+temp4[1,1]^2+temp4[2,2]^2
+temp4<-t(cor(data,zcacor))%*%cor(data,zcacor)
+temp4[1,1]^2+temp4[2,2]^2
+temp4<-t(cor(data,pca))%*%cor(data,pca)
+temp4[1,1]^2+temp4[2,2]^2
+temp4<-t(cor(data,pcacor))%*%cor(data,pcacor)
+temp4[1,1]^2+temp4[2,2]^2
+
+# Problem 5.3
+data(iris)
+summary(iris)
+head(iris)
+data<-matrix(c(iris[,1],iris[,2],iris[,3],iris[,4]),nrow=length(iris[,1]))
+head(data)
+variable<-iris[,5]
+head(variable)
+pr<-prcomp(data)
+print(pr);print(pr$x) #None of them capture 95% of the variation.
+cov(pr$x)
+summary(pr)
+par(mfrow=c(1,1))
+plot(pr)
+plot(pr$x[,1],pr$x[,2],xlab="PC1",ylab="PC2",col=variable)
+legend("topright",legend=levels(variable),col=c(1,2,3),pch=19)
+sigma<-cov(data)
+U<-eigen(sigma)$vectors
+head(U)
+pca<-data%*%t(U)
+eigen(sigma)$values/sum(diag(pca))
+pca<-whiten(data,method="PCA")
+head(pca)
+plot(pr$x[,1],pca[,1])
+plot(cor(data),xlim=c(-1.2,1.2),ylim=c(-1.2,1.2),xlab="PC1",ylab="PC2")
+symbols(0,0,circles=1,add=TRUE,inches=FALSE)
