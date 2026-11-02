@@ -1,0 +1,623 @@
+---
+title: MS&ML Revision
+output: pdf_document
+---
+The probability density function of a multvariate normal distrbution is defined as
+$$
+f_x(x)=\frac{1}{(2\pi \det(\Sigma))^d}\exp(-\frac{1}{2}(x-\mu)^T\Sigma(x-\mu))
+$$
+
+## Example 1
+```{r}
+library("mnormt")
+mu=c(0,1)
+Sigma=matrix(c(1,0.5,0.5,1),nrow=2)
+base1<-seq(0,1,by=0.01)
+set<-expand.grid(base1,base1)
+temp<-dmnorm(set,mean=mu,varcov=Sigma)
+temp2<-matrix(temp,nrow=length(base1))
+persp(base1,base1,temp2,theta=30,
+xlab="x",ylab="y",zlab="z",main="pdf of a multivariate normal distrbution")
+
+base1<-seq(-5,5,by=0.01)
+set<-expand.grid(base1,base1)
+temp<-dmnorm(set,mean=mu,varcov=Sigma)
+temp2<-matrix(temp,nrow=length(base1))
+contour(base1,base1,temp2,xlim=c(-5,5),ylim=c(-5,5))
+
+eigen(Sigma)
+val<- eigen(Sigma)$values
+vec<- eigen(Sigma)$vectors
+temp1<-val[1]
+temp2<-val[2]
+sqrt(temp1/temp2);sqrt(temp2/temp1)
+
+y<-rmnorm(1000,mean=mu,varcov=Sigma)
+head(y)
+plot(y,main="scatter plot")
+```
+
+## Example 2
+```{r}
+g1<-qnorm(0.995,0,1)
+print(g1)
+
+temp<-matrix(0,nrow=50)
+library("mnormt")
+alpha<-0.995
+for (i in 1:50){
+temp[i]<-qchisq(alpha,i)
+}
+head(temp)
+base<-seq(1,50,by=1)
+length(base);length(temp)
+plot(base,temp,xlab="dimension",ylab="alpha",main="Radius v.s. dimensional of the data")
+
+f0<-dnorm(0,0,1)
+f1<-dnorm(g1,0,1)
+thet<-f1/f0
+print(thet)
+
+temp<-matrix(0,nrow=50)
+for (i in 1:50){
+temp[i]<- pchisq(-2*log(thet),i)
+}
+base<-seq(1,50,by=1)
+plot(base,temp,
+main="Probability for a standard multivariate normal for different dimension",
+xlab="dimension",ylab="Probability")
+```
+
+### Proof for Part 4:
+Recall that
+$$
+f_x(x)=\frac{1}{(2\pi \det(\Sigma))^d}\exp(-\frac{1}{2}(x-\mu)^T\Sigma(x-\mu))
+$$
+Assume $X\sim MN(0,I_d)$
+
+Then we have
+$$
+f_x(x)=\frac{1}{(2\pi)^d}\exp(-\frac{1}{2}(x-\mu)^T(x-\mu))
+$$
+$$
+f_x(0)=\frac{1}{(2\pi)^d}
+$$
+$$
+\eta=\frac{f(x)}{f(0)}=\exp(-\frac{1}{2}(x^T x))=exp(-\frac{1}{2}r_d^2)
+$$
+$$
+r_d^2=-2\log(\eta)
+$$
+
+## Example 3
+```{r}
+conv<-diag(1,nrow=100,ncol=100)
+temp<-eigen(conv)
+temp$values
+mu<-matrix(0,nrow=100,ncol=1)
+
+set.seed(10)
+par(mfrow=c(2,2))
+for (i in c(20,50,200)){
+x<-rmnorm(n=i,mean=mu,conv)
+plot(x,xlab="x",ylab="density",
+main=paste("Simulate data sets for n=",i))
+}
+
+S1.emp<-rmnorm(n=20,mean=mu,conv)
+S2.emp<-rmnorm(n=50,mean=mu,conv)
+S3.emp<-rmnorm(n=200,mean=mu,conv)
+S1.eigen<-eigen(cov(S1.emp))$values
+S2.eigen<-eigen(cov(S2.emp))$values
+S3.eigen<-eigen(cov(S3.emp))$values
+
+library("corpcor")
+rank.condition(S1.emp)
+rank.condition(S2.emp)
+rank.condition(S3.emp)
+
+mean((S1.eigen-temp$values)^2)
+mean((S2.eigen-temp$values)^2)
+mean((S3.eigen-temp$values)^2)
+
+library("corpcor")
+S1<- cov.shrink(S1.emp)
+S2<- cov.shrink(S2.emp)
+S3<- cov.shrink(S3.emp)
+print(eigen(S1)$values)
+print(eigen(S2)$values)
+print(eigen(S3)$values)
+rank.condition(S1)
+rank.condition(S2)
+rank.condition(S3)
+mean((S1.eigen-temp$values)^2)
+mean((S2.eigen-temp$values)^2)
+mean((S3.eigen-temp$values)^2)
+```
+
+## Example 4
+Set
+$$
+\Sigma=\begin{pmatrix}
+5&2&2\\2&7&8\\2&8&11
+\end{pmatrix}
+$$
+```{r}
+mu=c(0,0,0)
+Sigma<-matrix(c(5,2,2,2,7,8,2,8,11),nrow=3,ncol=3)
+head(Sigma)
+
+library("whitening")
+library("mnormt")
+data<-rmnorm(n=500,mean=mu,varcov=Sigma)
+ZCA<- whiten(data,method="ZCA")
+ZCAcor<- whiten(data,method="ZCA-cor")
+PCA<- whiten(data,method="PCA")
+PCAcor<- whiten(data,method="PCA-cor")
+Chole<- whiten(data,method="Cholesky")
+
+zapsmall(cov(ZCA))
+zapsmall(cov(ZCAcor))
+zapsmall(cov(PCA))
+zapsmall(cov(PCAcor))
+zapsmall(cov(Chole))
+
+par(mfrow=c(2,3))
+plot(data,ZCA)
+plot(data,ZCAcor)
+plot(data,PCA)
+plot(data,PCAcor)
+plot(data,Chole)
+
+par(mfrow=c(2,3))
+head(PCA)
+plot(PCA[,1],PCA[,2],xlab="L1",ylab="L2")
+plot(PCA[,1],PCA[,3],xlab="L1",ylab="L3")
+plot(PCA[,2],PCA[,3],xlab="L2",ylab="L3")
+plot(PCAcor[,1],PCAcor[,2],xlab="L1",ylab="L2")
+plot(PCAcor[,1],PCAcor[,3],xlab="L1",ylab="L3")
+plot(PCAcor[,2],PCAcor[,3],xlab="L2",ylab="L3")
+
+plot(ZCA[,1],ZCA[,2],xlab="L1",ylab="L2")
+plot(ZCA[,1],ZCA[,3],xlab="L1",ylab="L3")
+plot(ZCA[,2],ZCA[,3],xlab="L2",ylab="L3")
+plot(ZCAcor[,1],ZCAcor[,2],xlab="L1",ylab="L2")
+plot(ZCAcor[,1],ZCAcor[,3],xlab="L1",ylab="L3")
+plot(ZCAcor[,2],ZCAcor[,3],xlab="L2",ylab="L3")
+
+par(mfrow=c(1,3))
+plot(Chole[,1],Chole[,2],xlab="L1",ylab="L2",asp=1)
+plot(Chole[,1],Chole[,3],xlab="L1",ylab="L3",asp=1)
+plot(Chole[,2],Chole[,3],xlab="L2",ylab="L3",asp=1)
+
+par(mfrow=c(2,4))
+plot(ZCA,ZCAcor,asp=1)
+plot(ZCA,PCA,asp=1)
+plot(ZCA,PCAcor,asp=1)
+plot(ZCA,Chole,asp=1)
+plot(PCA,PCAcor,asp=1)
+plot(PCA,Chole,asp=1)
+plot(PCAcor,Chole,asp=1)
+
+cor(data,ZCA)
+cor(data,ZCAcor)
+cor(data,PCA)
+cor(data,PCAcor)
+cor(data,Chole)
+par(mfrow=c(1,1))
+plot(cor(data,ZCA),col="red",
+xlim=c(-1.7,1.7),ylim=c(-1.5,1.5),xlab="data",ylab="covariance",
+main="Covariance between data for a selected whitening method")
+points(cor(data,ZCAcor),col="orange")
+points(cor(data,PCA),col="green")
+points(cor(data,PCAcor),col="darkgreen")
+points(cor(data,Chole),col="blue")
+t<-seq(0,2*pi,by=0.01)
+lines(cos(t),sin(t))
+legend("topright",
+legend=c("ZCA","ZCAcor","PCA","PCAcor","Cholesky"),
+col=c("red","orange","green","darkgreen","blue"),pch=1)
+
+for (m in 1:3){
+    if (m==1){
+        plot(NA,xlim=c(-1.5,1.7),ylim=c(-1.2,1.2),
+        xlab="Data 1",
+        ylab="Data 2",
+        main="Covariance between data for a selected whitening method")
+    }
+    if (m==2){
+        plot(NA,xlim=c(0,1.3),ylim=c(0,1.2),
+        xlab="Data 1",
+        ylab="Data 2",
+        main="Covariance between data for a selected whitening method")
+    }
+    if (m==3){
+        plot(NA,xlim=c(0.8,1.07),ylim=c(0.8,1.04),
+        xlab="Data 1",
+        ylab="Data 2",
+        main="Covariance between data for a selected whitening method")
+    }
+    for (i in 1:3){
+        for (j in 1:3){
+        if (i<=j){
+            if (i!=j){
+                #print(c(i,j,i+j))
+                points(cor(data,ZCA)[i,i],cor(data,ZCA)[j,j],col="red",pch=i+j)
+                points(cor(data,ZCAcor)[i,i],cor(data,ZCAcor)[j,j],col="orange",pch=i+j)
+                points(cor(data,PCA)[i,i],cor(data,PCA)[j,j],col="purple",pch=i+j)
+                points(cor(data,PCAcor)[i,i],cor(data,PCAcor)[j,j],col="darkgreen",pch=i+j)
+                points(cor(data,Chole)[i,i],cor(data,Chole)[j,j],col="blue",pch=i+j)
+            }
+            if (i==j){
+                #print(15-i)
+                points(cor(data,ZCA)[i,i],cor(data,ZCA)[j,j],col="red",pch=15-i)
+                points(cor(data,ZCAcor)[i,i],cor(data,ZCAcor)[j,j],col="orange",pch=15-i)
+                points(cor(data,PCA)[i,i],cor(data,PCA)[j,j],col="purple",pch=15-i)
+                points(cor(data,PCAcor)[i,i],cor(data,PCAcor)[j,j],col="darkgreen",pch=15-i)
+                points(cor(data,Chole)[i,i],cor(data,Chole)[j,j],col="blue",pch=15-i)
+            }
+    }}}
+    segments(-1,-1,-1,1)
+    segments(-1,-1,1,-1)
+    segments(1,-1,1,1)
+    segments(-1,1,1,1)
+    legend("topright",
+    legend=c("ZCA","ZCAcor","PCA",
+    "PCAcor","Cholesky",
+    "L1 vs L1","L1 vs L2","L1 vs L3",
+    "L2 vs L2","L2 vs L3","L3 vs L3"),
+    col=c("red","orange","purple","darkgreen","blue","black",
+    "black","black","black","black","black"),
+    pch=c(15,15,15,15,15,14,3,4,13,5,12))
+    }
+
+sum(diag(cor(data,ZCA)))/3
+sum(diag(cor(data,ZCAcor)))/3
+sum(diag(cor(data,PCA)))/3
+sum(diag(cor(data,PCAcor)))/3
+sum(diag(cor(data,Chole)))/3
+
+temp<-t(cor(data,ZCA))%*%cor(data,ZCA)
+sum(diag(temp)^2)
+temp<-t(cor(data,ZCAcor))%*%cor(data,ZCAcor)
+sum(diag(temp)^2)
+temp<-t(cor(data,PCA))%*%cor(data,PCA)
+sum(diag(temp)^2)
+temp<-t(cor(data,PCAcor))%*%cor(data,PCAcor)
+sum(diag(temp)^2)
+temp<-t(cor(data,Chole))%*%cor(data,Chole)
+sum(diag(temp)^2)
+```
+
+We found that
+
+1. ZCA-cor whitening produces the largest average componentwise cross-correlation.
+2. PCA-cor whitening produces the largest compression in terms of sums of squared cross-correlation.
+
+## Example 5
+Recall that
+
+The whitening matrix is defined as
+$$
+W=Q_1 \Sigma^{\frac{1}{2}}=Q_2 P^{\frac{1}{2}} V^{\frac{1}{2}}
+$$
+where $Q_1$, and $Q_2$ are othogonal matrix, $P=V^{\frac{1}{2}}\Sigma V^{\frac{1}{2}}$, and $V$ is the diagonal matrix containing the variances.
+
+
+Cross covariance matrix $\Phi$ can be shown as
+$$
+\Phi=\Sigma W^T
+$$
+
+Similarly, the cross correlation matrix $\Psi$ can be shown as
+$$
+\Psi=V^{\frac{1}{2}}\Sigma W^T
+$$
+
+In the following, we defined a function called "diagonalmatrix" which is use to find the matrix $D^k$.
+$$
+A^k = P D^k P^{-1}
+$$
+where $D$ is the diagonal matrix of the eigenvalues of $A$, and the columns of $P$ are the corresponding eigenvectors. If $P$ is orthogonal, then $P^{-1} = P^T$. This is called the eigendecomposition of $A$.
+```{r}
+diagonalmatrix<-function(matrix1,power){
+    d<-nrow(matrix1)
+    sigmapower<-matrix(0,nrow=d,ncol=d)
+    eigenvalue<-eigen(matrix1)$values
+    for (i in 1:d){
+        for (j in 1:d){
+            if (i==j){
+                sigmapower[i,j]<-eigenvalue[i]^power
+            }
+            else{
+                sigmapower[i,j]<-0
+            }
+        }
+    }
+    return(sigmapower)
+}
+
+tester1<-matrix(c(1,0,0,1),nrow=2)
+diagonalmatrix(tester1,1/2)
+
+tester2<-matrix(c(4,1,1,3),nrow=2)
+diagonalmatrix(tester2,1/2)
+
+tester3<-matrix(c(4,1,1,1,5,1,1,1,10),nrow=3)
+diagonalmatrix(tester3,1/2)
+
+# Finding the diagonal matrix whose entries are each variance raised to the kth power
+findingV<-function(matrix1,power){
+    d<-nrow(matrix1)
+    sigmapower<-matrix(0,nrow=d,ncol=d)
+    for (i in 1:d){
+        for (j in 1:d){
+            if (i==j){
+                sigmapower[i,j]<-matrix1[i,j]^power
+            }
+            else{
+                sigmapower[i,j]<-0
+            }
+        }
+    }
+    return(sigmapower)
+}
+tester1<-matrix(c(1,0,0,1),nrow=2)
+findingV(tester1,1/2)
+
+tester2<-matrix(c(4,1,1,3),nrow=2)
+findingV(tester2,1)
+
+tester3<-matrix(c(4,1,1,1,5,1,1,1,10),nrow=3)
+findingV(tester3,1/2)
+
+# Finding a matrix A^k, for some k in Z.
+findAkpower<-function(Matrix1,power){
+    eigenvector<-eigen(Matrix1)$vectors
+    diagon<-diagonalmatrix(Matrix1,power)
+    return(eigenvector%*%diagon %*% t(eigenvector))
+}
+tester1<-matrix(c(1,0,0,1),nrow=2)
+findAkpower(tester1,10)
+
+tester2<-matrix(c(4,1,1,3),nrow=2)
+findAkpower(tester2,4)
+
+tester3<-matrix(c(4,1,1,1,5,1,1,1,10),nrow=3)
+findAkpower(tester3,1/2)
+
+# Finding the correlation matrix P.
+findingP<-function(Sigma,power){
+    temp<-findingV(Sigma,-1/2)
+    P<-temp%*%Sigma%*%temp
+    return(findAkpower(P,power))
+}
+
+# Finding the ZCA whitening matrix.
+ZCA<-function(Sigma){
+    eigenvector<-eigen(Sigma)$vectors
+    temp<-diagonalmatrix(Sigma,-1/2)
+    temp2<-eigenvector%*%temp%*%t(eigenvector)
+    return(temp2)
+}
+tester1<-matrix(c(1,0,0,1),nrow=2)
+ZCA(tester1)
+
+tester2<-matrix(c(4,1,1,3),nrow=2)
+ZCA(tester2)
+
+tester3<-matrix(c(4,1,1,1,5,1,1,1,10),nrow=3)
+ZCA(tester3)
+
+# Finding the PCA whitening matrix.
+PCA<-function(Sigma){
+    hat<-diagonalmatrix(Sigma,-1/2)
+    eigenvector<-eigen(Sigma)$vectors
+    temp<- hat%*%t(eigenvector)
+    return(temp)
+}
+
+tester1<-matrix(c(1,0,0,1),nrow=2)
+PCA(tester1)
+
+tester2<-matrix(c(4,1,1,3),nrow=2)
+PCA(tester2)
+
+tester3<-matrix(c(4,1,1,1,5,1,1,1,10),nrow=3)
+PCA(tester3)
+
+# Finding ZCA-cor whitening matrix.
+ZCAcor<-function(Sigma){
+    temp1<- findingP(Sigma,-1/2)
+    temp2<- findingV(Sigma,-1/2)
+    return(temp1%*%temp2)
+}
+
+tester1<-matrix(c(1,0,0,1),nrow=2)
+ZCAcor(tester1)
+
+tester2<-matrix(c(4,1,1,3),nrow=2)
+ZCAcor(tester2)
+
+tester3<-matrix(c(4,1,1,1,5,1,1,1,10),nrow=3)
+ZCAcor(tester3)
+
+# Finding PCA-cor whitening matrix.
+PCAcor<-function(Matrix){
+    P1<- findingP(Matrix,1)
+    G1<-eigen(P1)$vectors
+    the<-diagonalmatrix(P1,-1/2)
+    V1<-findingV(Matrix,-1/2)
+    temp<- the %*% t(G1) %*% V1
+    return(temp)
+}
+
+tester1<-matrix(c(1,0,0,1),nrow=2)
+PCAcor(tester1)
+
+tester2<-matrix(c(4,1,1,3),nrow=2)
+PCAcor(tester2)
+
+tester3<-matrix(c(4,1,1,1,5,1,1,1,10),nrow=3)
+PCAcor(tester3)
+
+chole<-function(Matrix){
+    upper<-chol(Matrix)
+    lower<-t(upper)
+    return(solve(lower))
+}
+
+tester1<-matrix(c(1,0,0,1),nrow=2)
+chole(tester1)
+solve(t(chole(tester1)) %*% chole(tester1))
+
+tester2<-matrix(c(4,1,1,3),nrow=2)
+chole(tester2)
+solve(t(chole(tester2)) %*% chole(tester2))
+
+tester3<-matrix(c(4,1,1,1,5,1,1,1,10),nrow=3)
+chole(tester3)
+solve(t(chole(tester3)) %*% chole(tester3))
+
+crosscov<-function(Sigma,method="ZCA"){
+    if (method=="ZCA"){
+        W<-ZCA(Sigma)
+    }
+    if (method=="PCA"){
+        W<-PCA(Sigma)
+    }
+    if (method=="ZCAcor"){
+        W<-ZCAcor(Sigma)
+    }
+    if (method=="PCAcor"){
+        W<-PCAcor(Sigma)
+    }
+    if (method=="Cholesky"){
+        W<-chole(Sigma)
+    }
+    temp<-Sigma %*% t(W)
+    return(temp)
+}
+tester1<-matrix(c(1,0,0,1),nrow=2)
+crosscov(tester1,"ZCA")
+
+tester2<-matrix(c(4,1,1,3),nrow=2)
+crosscov(tester2,"PCA")
+
+tester3<-matrix(c(4,1,1,1,5,1,1,1,10),nrow=3)
+crosscov(tester3)
+
+tester4<-matrix(c(4,1,1,3),nrow=2)
+method1<-c("ZCA","PCA","ZCAcor","PCAcor","Cholesky")
+p<-matrix(0,nrow=5,ncol=4)
+for (i in 1:5){
+    p[i,]<-as.vector(crosscov(tester4,method1[i]))
+}
+print(p)
+
+crosscorr<-function(Sigma,method="ZCA"){
+    if (method=="ZCA"){
+        W<-ZCA(Sigma)
+    }
+    if (method=="PCA"){
+        W<-PCA(Sigma)
+    }
+    if (method=="ZCAcor"){
+        W<-ZCAcor(Sigma)
+    }
+    if (method=="PCAcor"){
+        W<-PCAcor(Sigma)
+    }
+    if (method=="Cholesky"){
+        W<-chole(Sigma)
+    }
+    temp<-findingV(Sigma,-1/2) %*% Sigma %*% t(W)
+    return(temp)
+}
+tester1<-matrix(c(1,0,0,1),nrow=2)
+crosscorr(tester1,"ZCA")
+
+tester2<-matrix(c(4,1,1,3),nrow=2)
+crosscorr(tester2,"PCA")
+
+tester3<-matrix(c(4,1,1,1,5,1,1,1,10),nrow=3)
+crosscorr(tester3)
+
+tester4<-matrix(c(4,1,1,3),nrow=2)
+method1<-c("ZCA","PCA","ZCAcor","PCAcor","Cholesky")
+p<-matrix(0,nrow=5,ncol=4)
+for (i in 1:5){
+    p[i,]<-as.vector(crosscorr(tester4,method1[i]))
+}
+print(p)
+
+# We are now interested in the proportion of the total variance across different whitening methods.
+# The relative contribution of each element in z to explain the total variation.
+ZCAprop<-function(Sigma){
+    empty<-matrix(0,nrow=nrow(Sigma),ncol=1)
+    sumvar<-sum(diag(Sigma))
+    for (i in 1:nrow(Sigma)){
+        empty[i]<-Sigma[i,i]/sumvar
+    }
+    return(empty)
+}
+tester1<-matrix(c(1,0,0,1),nrow=2)
+ZCAprop(tester1)
+
+tester2<-matrix(c(4,1,1,3),nrow=2)
+ZCAprop(tester2)
+
+tester3<-matrix(c(4,1,1,1,5,1,1,1,10),nrow=3)
+ZCAprop(tester3)
+
+ZCAcorprop<-function(Sigma){
+    empty<-matrix(0,nrow=nrow(Sigma),ncol=1)
+    for (i in 1:nrow(Sigma)){
+        empty[i]<-nrow(Sigma)
+    }
+    return(empty)
+}
+tester1<-matrix(c(1,0,0,1),nrow=2)
+ZCAcorprop(tester1)
+
+tester2<-matrix(c(4,1,1,3),nrow=2)
+ZCAcorprop(tester2)
+
+tester3<-matrix(c(4,1,1,1,5,1,1,1,10),nrow=3)
+ZCAcorprop(tester3)
+
+PCAprop<-function(Sigma){
+    eigenvalue<-eigen(Sigma)$values
+    empty<-matrix(0,nrow=nrow(Sigma),ncol=1)
+    for (i in 1:nrow(Sigma)){
+        empty[i]<-eigenvalue[i]/sum(eigenvalue)
+    }
+    return(empty)
+}
+tester1<-matrix(c(1,0,0,1),nrow=2)
+PCAprop(tester1)
+
+tester2<-matrix(c(4,1,1,3),nrow=2)
+PCAprop(tester2)
+
+tester3<-matrix(c(4,1,1,1,5,1,1,1,10),nrow=3)
+PCAprop(tester3)
+
+PCAcorprop<-function(Sigma){
+    temp<-findingP(Sigma,1)
+    eigenvalue<-eigen(temp)$values
+    empty<-matrix(0,nrow=nrow(Sigma),ncol=1)
+    for (i in 1:nrow(Sigma)){
+        empty[i]<-eigenvalue[i]/sum(eigenvalue)
+    }
+    return(empty)
+}
+tester1<-matrix(c(1,0,0,1),nrow=2)
+PCAcorprop(tester1)
+
+tester2<-matrix(c(4,1,1,3),nrow=2)
+PCAcorprop(tester2)
+
+tester3<-matrix(c(4,1,1,1,5,1,1,1,10),nrow=3)
+PCAcorprop(tester3)
+```
